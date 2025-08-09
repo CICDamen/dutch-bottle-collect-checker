@@ -55,12 +55,50 @@ const Map: React.FC<MapProps> = ({ supermarkets, searchQuery, onSupermarketSelec
                          supermarket.status === 'closed' ? '#ef4444' : '#eab308';
       el.style.backgroundColor = statusColor;
 
+      // Create popup content
+      const statusText = supermarket.status === 'open' ? 'Inzameling Open' : 
+                        supermarket.status === 'closed' ? 'Inzameling Gesloten' : 'Status Onbekend';
+      
+      const popupContent = `
+        <div class="p-3 min-w-[250px]">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-semibold text-lg">${supermarket.chain}</h3>
+            <span class="px-2 py-1 text-xs rounded-full ${
+              supermarket.status === 'open' ? 'bg-green-100 text-green-800' :
+              supermarket.status === 'closed' ? 'bg-red-100 text-red-800' :
+              'bg-yellow-100 text-yellow-800'
+            }">${statusText}</span>
+          </div>
+          <p class="text-sm text-gray-600 mb-2">${supermarket.name}</p>
+          <div class="text-sm mb-2">
+            <p>${supermarket.address}</p>
+            <p>${supermarket.postalCode} ${supermarket.city}</p>
+          </div>
+          ${supermarket.incident ? `
+            <div class="bg-red-50 border border-red-200 rounded p-2 mt-2">
+              <p class="text-xs font-medium text-red-800">Gemeld incident:</p>
+              <p class="text-xs text-red-700">${supermarket.incident.description}</p>
+            </div>
+          ` : ''}
+          <p class="text-xs text-gray-500 mt-2">
+            Laatst bijgewerkt: ${new Date(supermarket.lastUpdated).toLocaleString('nl-NL')}
+          </p>
+        </div>
+      `;
+
+      const popup = new mapboxgl.Popup({
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false
+      }).setHTML(popupContent);
+
       el.addEventListener('click', () => {
         onSupermarketSelect(supermarket);
       });
 
       new mapboxgl.Marker(el)
         .setLngLat([supermarket.longitude, supermarket.latitude])
+        .setPopup(popup)
         .addTo(map.current!);
     });
 
@@ -74,16 +112,16 @@ const Map: React.FC<MapProps> = ({ supermarkets, searchQuery, onSupermarketSelec
     return (
       <div className="flex items-center justify-center h-full">
         <Card className="p-6 max-w-md w-full">
-          <h3 className="text-lg font-semibold mb-4">Mapbox Configuration</h3>
+          <h3 className="text-lg font-semibold mb-4">Mapbox Configuratie</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Please enter your Mapbox public token to display the map. You can get one at{' '}
+            Voer uw Mapbox publieke token in om de kaart weer te geven. U kunt er een krijgen op{' '}
             <a href="https://mapbox.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">
               mapbox.com
             </a>
           </p>
           <Input
             type="password"
-            placeholder="Enter Mapbox public token"
+            placeholder="Voer Mapbox publieke token in"
             value={mapboxToken}
             onChange={(e) => setMapboxToken(e.target.value)}
             className="mb-4"
@@ -93,7 +131,7 @@ const Map: React.FC<MapProps> = ({ supermarkets, searchQuery, onSupermarketSelec
             disabled={!mapboxToken}
             className="w-full"
           >
-            Initialize Map
+            Kaart Initialiseren
           </Button>
         </Card>
       </div>
@@ -106,19 +144,19 @@ const Map: React.FC<MapProps> = ({ supermarkets, searchQuery, onSupermarketSelec
       
       {/* Legend */}
       <Card className="absolute top-4 left-4 p-4 z-10">
-        <h4 className="font-semibold mb-2">Status Legend</h4>
+        <h4 className="font-semibold mb-2">Status Legenda</h4>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-status-open"></div>
-            <span className="text-sm">Collection Open</span>
+            <span className="text-sm">Inzameling Open</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-status-closed"></div>
-            <span className="text-sm">Collection Closed</span>
+            <span className="text-sm">Inzameling Gesloten</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-status-unknown"></div>
-            <span className="text-sm">Status Unknown</span>
+            <span className="text-sm">Status Onbekend</span>
           </div>
         </div>
       </Card>

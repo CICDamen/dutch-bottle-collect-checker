@@ -1,20 +1,23 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import SearchBar from '@/components/SearchBar';
 import Map from '@/components/Map';
 import SupermarketCard from '@/components/SupermarketCard';
 import IncidentReportDialog from '@/components/IncidentReportDialog';
+import IncidentSearchDialog from '@/components/IncidentSearchDialog';
 import { SupermarketData, IncidentReport } from '@/types/supermarket';
 import { mockSupermarkets } from '@/data/mockSupermarkets';
-import { Recycle, MapPin, AlertCircle } from 'lucide-react';
+import { Recycle, MapPin, AlertCircle, AlertTriangle } from 'lucide-react';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [supermarkets, setSupermarkets] = useState<SupermarketData[]>(mockSupermarkets);
   const [selectedSupermarket, setSelectedSupermarket] = useState<SupermarketData | null>(null);
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
+  const [isIncidentSearchOpen, setIsIncidentSearchOpen] = useState(false);
   const { toast } = useToast();
 
   // Filter supermarkets based on search query
@@ -77,6 +80,11 @@ const Index = () => {
     });
   };
 
+  const handleIncidentSearchSelect = (supermarket: SupermarketData) => {
+    setSelectedSupermarket(supermarket);
+    setIsIncidentDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -96,13 +104,22 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Search Bar */}
-          <div className="max-w-md">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Zoek op stad, supermarkt of postcode..."
-            />
+          {/* Search Bar and Incident Button */}
+          <div className="flex gap-4 items-start">
+            <div className="max-w-md flex-1">
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Zoek op stad, supermarkt of postcode..."
+              />
+            </div>
+            <Button 
+              onClick={() => setIsIncidentSearchOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Incident Melden
+            </Button>
           </div>
         </div>
       </header>
@@ -191,6 +208,14 @@ const Index = () => {
           </div>
         </div>
       </div>
+
+      {/* Incident Search Dialog */}
+      <IncidentSearchDialog
+        supermarkets={supermarkets}
+        isOpen={isIncidentSearchOpen}
+        onClose={() => setIsIncidentSearchOpen(false)}
+        onSelectSupermarket={handleIncidentSearchSelect}
+      />
 
       {/* Incident Report Dialog */}
       <IncidentReportDialog
