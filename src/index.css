@@ -2,39 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Dutch Bottle Collection App Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 214 84% 56%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-foreground: 215 25% 15%;
 
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 215 16% 47%;
 
     --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent-foreground: 215 25% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 214 31% 91%;
+    --input: 214 31% 91%;
+    --ring: 214 84% 56%;
+
+    /* Status colors for bottle collection */
+    --status-open: 142 71% 45%;
+    --status-open-foreground: 0 0% 100%;
+    --status-closed: 0 72% 51%;
+    --status-closed-foreground: 0 0% 100%;
+    --status-unknown: 43 74% 66%;
+    --status-unknown-foreground: 0 0% 100%;
+
+    /* Dutch inspired gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(220 90% 66%));
+    --gradient-status-open: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 71% 55%));
+    --gradient-status-closed: linear-gradient(135deg, hsl(0 72% 51%), hsl(0 72% 61%));
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(214 84% 56% / 0.1);
+    --shadow-status: 0 4px 12px -2px hsl(var(--primary) / 0.2);
 
     --radius: 0.5rem;
 
