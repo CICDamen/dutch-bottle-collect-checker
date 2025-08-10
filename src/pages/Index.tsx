@@ -9,16 +9,26 @@ import SupermarketCard from '@/components/SupermarketCard';
 import IncidentReportDialog from '@/components/IncidentReportDialog';
 import IncidentSearchDialog from '@/components/IncidentSearchDialog';
 import { SupermarketData, IncidentReport } from '@/types/supermarket';
-import { mockSupermarkets } from '@/data/mockSupermarkets';
-import { Recycle, MapPin, AlertCircle, AlertTriangle } from 'lucide-react';
+import { useSupermarkets } from '@/hooks/useSupermarkets';
+import { Recycle, MapPin, AlertCircle, AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [supermarkets, setSupermarkets] = useState<SupermarketData[]>(mockSupermarkets);
   const [selectedSupermarket, setSelectedSupermarket] = useState<SupermarketData | null>(null);
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
   const [isIncidentSearchOpen, setIsIncidentSearchOpen] = useState(false);
   const { toast } = useToast();
+  
+  const {
+    supermarkets,
+    isLoading,
+    error,
+    useGooglePlaces,
+    enableGooglePlaces,
+    disableGooglePlaces,
+    refreshSupermarkets,
+    getCacheInfo
+  } = useSupermarkets();
 
   // Filter supermarkets based on search query
   const filteredSupermarkets = useMemo(() => {
@@ -55,29 +65,50 @@ const Index = () => {
   };
 
   const handleIncidentSubmit = (report: IncidentReport) => {
-    setSupermarkets(prevSupermarkets => 
-      prevSupermarkets.map(supermarket => {
-        if (supermarket.id === report.supermarketId) {
-          return {
-            ...supermarket,
-            status: 'closed' as const,
-            lastUpdated: new Date().toISOString(),
-            incident: {
-              type: report.type,
-              description: report.description,
-              reportedAt: new Date().toISOString(),
-              reportedBy: report.reporterName || 'Anoniem',
-            },
-          };
-        }
-        return supermarket;
-      })
-    );
-
     toast({
       title: "Incident gemeld",
-      description: "Bedankt voor uw melding. Andere gebruikers kunnen nu zien dat er een probleem is.",
+      description: "Bedankt voor uw melding. Deze functie werkt momenteel alleen met mock data.",
     });
+  };
+
+  const handleToggleGooglePlaces = async () => {
+    if (useGooglePlaces) {
+      disableGooglePlaces();
+      toast({
+        title: "Google Places uitgeschakeld",
+        description: "Gebruikt nu lokale demo data",
+      });
+    } else {
+      try {
+        await enableGooglePlaces();
+        toast({
+          title: "Google Places ingeschakeld",
+          description: "Haalt nu live supermarkt data op",
+        });
+      } catch (error) {
+        toast({
+          title: "Google Places API niet beschikbaar",
+          description: "Configureer VITE_GOOGLE_PLACES_API_KEY in uw .env bestand",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      await refreshSupermarkets();
+      toast({
+        title: "Data ververst",
+        description: "Supermarkt locaties zijn bijgewerkt",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh mislukt",
+        description: "Kon de data niet vernieuwen",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleIncidentSearchSelect = (supermarket: SupermarketData) => {
@@ -104,22 +135,68 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Search Bar and Incident Button */}
-          <div className="flex gap-4 items-start">
-            <div className="max-w-md flex-1">
+          {/* Search Bar and Control Buttons */}
+          <div className="flex gap-4 items-start flex-wrap">
+            <div className="max-w-md flex-1 min-w-64">
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
                 placeholder="Zoek op stad, supermarkt of postcode..."
               />
             </div>
-            <Button 
-              onClick={() => setIsIncidentSearchOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <AlertTriangle className="h-4 w-4" />
-              Incident Melden
-            </Button>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={handleToggleGooglePlaces}
+                variant={useGooglePlaces ? "default" : "outline"}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                {useGooglePlaces ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                {useGooglePlaces ? "Live Data" : "Demo Data"}
+              </Button>
+              
+              {useGooglePlaces && (
+                <Button
+                  onClick={handleRefresh}
+                  variant="outline"
+                  size="sm"
+                  disabled={isLoading}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Ververs
+                </Button>
+              )}
+              
+              <Button 
+                onClick={() => setIsIncidentSearchOpen(true)}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Incident Melden
+              </Button>
+            </div>
+          </div>
+          
+          {/* Data Source Info */}
+          <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              {useGooglePlaces ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+              <span>
+                {useGooglePlaces ? "Live data van Google Places API" : "Demo data"}
+                {isLoading && " (laden...)"}
+              </span>
+            </div>
+            {useGooglePlaces && (() => {
+              const cacheInfo = getCacheInfo();
+              return cacheInfo.hasCache && (
+                <span>
+                  Cache: {cacheInfo.itemCount} locaties, {Math.floor((cacheInfo.cacheAge || 0) / 60)}h oud
+                </span>
+              );
+            })()}
           </div>
         </div>
       </header>
