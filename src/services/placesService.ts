@@ -1,60 +1,20 @@
 import { SupermarketData } from '@/types/supermarket';
 
-const GOOGLE_PLACES_API_KEY = (import.meta as any).env?.VITE_GOOGLE_PLACES_API_KEY;
 const CACHE_KEY = 'supermarkets_cache';
 const CACHE_EXPIRY_HOURS = 24;
 
-interface PlacesSearchResult {
-  place_id: string;
-  name: string;
-  formatted_address: string;
-  geometry: {
-    location: {
-      lat: number;
-      lng: number;
-    };
-  };
-  business_status?: string;
-  opening_hours?: {
-    open_now?: boolean;
-  };
-  types: string[];
-  rating?: number;
-}
+// Note: Google Places API calls have been moved to server-side sync scripts
+// This service now focuses on cache management and data retrieval from database/files
+console.info('PlacesService: Browser-side API calls disabled to avoid CORS issues');
 
 interface CachedData {
   timestamp: number;
   data: SupermarketData[];
 }
 
-const DUTCH_SUPERMARKET_CHAINS = [
-  'Albert Heijn',
-  'Jumbo',
-  'Plus Supermarkt',
-  'Lidl',
-  'Aldi',
-  'Coop',
-  'Dirk van den Broek',
-  'Dirk',
-  'Nettorama',
-  'Picnic',
-  'SPAR',
-  'Vomar',
-  'DekaMarkt',
-  'Boni',
-  'MCD Supermarkten'
-];
-
-const NETHERLANDS_BOUNDS = {
-  north: 53.7,
-  south: 50.5,
-  east: 7.3,
-  west: 3.2
-};
-
 /**
- * Service for interacting with Google Places API to fetch supermarket data.
- * Implements smart caching and cost optimization strategies.
+ * Service for managing supermarket data cache and loading pre-synced data.
+ * Google Places API calls have been moved to server-side sync scripts to avoid CORS issues.
  */
 class PlacesService {
   /**
@@ -109,192 +69,66 @@ class PlacesService {
   }
 
   /**
-   * Searches for places using Google Places Text Search API.
-   * @param query - Search query string
-   * @returns Array of place search results
-   * @throws Error if API key is missing or API returns error
-   */
-  private async searchPlacesByText(query: string): Promise<PlacesSearchResult[]> {
-    if (!GOOGLE_PLACES_API_KEY) {
-      throw new Error('Google Places API key not configured');
-    }
-
-    const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
-    url.searchParams.append('query', query);
-    url.searchParams.append('key', GOOGLE_PLACES_API_KEY);
-    url.searchParams.append('type', 'supermarket');
-    url.searchParams.append('region', 'nl');
-
-    const response = await fetch(url.toString());
-    
-    if (!response.ok) {
-      throw new Error(`Places API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      throw new Error(`Places API status: ${data.status}`);
-    }
-
-    return data.results || [];
-  }
-
-  /**
-   * Converts Google Places API result to SupermarketData format.
-   * @param place - Place result from Google Places API
-   * @returns Formatted supermarket data object
-   */
-  private convertToSupermarketData(place: PlacesSearchResult): SupermarketData {
-    const addressParts = place.formatted_address.split(', ');
-    const postalAndCity = addressParts[addressParts.length - 2] || '';
-    const postalMatch = postalAndCity.match(/^(\d{4}\s?[A-Z]{2})/);
-    const postalCode = postalMatch ? postalMatch[1] : '';
-    const city = postalAndCity.replace(postalMatch?.[0] || '', '').trim();
-    
-    const address = addressParts.slice(0, -2).join(', ');
-    
-    const chain = DUTCH_SUPERMARKET_CHAINS.find(chainName => 
-      place.name.toLowerCase().includes(chainName.toLowerCase())
-    ) || 'Onbekend';
-
-    const status = this.determineStatus(place);
-
-    return {
-      id: place.place_id,
-      name: place.name,
-      chain,
-      address,
-      city,
-      postalCode,
-      latitude: place.geometry.location.lat,
-      longitude: place.geometry.location.lng,
-      status,
-      lastUpdated: new Date().toISOString()
-    };
-  }
-
-  /**
-   * Determines the operational status of a supermarket from place data.
-   * @param place - Place result from Google Places API
-   * @returns Status string: 'open', 'closed', or 'unknown'
-   */
-  private determineStatus(place: PlacesSearchResult): 'open' | 'closed' | 'unknown' {
-    if (place.business_status === 'CLOSED_PERMANENTLY' || 
-        place.business_status === 'CLOSED_TEMPORARILY') {
-      return 'closed';
-    }
-    
-    if (place.opening_hours?.open_now !== undefined) {
-      return place.opening_hours.open_now ? 'open' : 'closed';
-    }
-    
-    return 'unknown';
-  }
-
-  /**
-   * Checks if coordinates are within Netherlands boundaries.
-   * @param lat - Latitude coordinate
-   * @param lng - Longitude coordinate
-   * @returns true if coordinates are in Netherlands
-   */
-  private isInNetherlands(lat: number, lng: number): boolean {
-    return lat >= NETHERLANDS_BOUNDS.south && 
-           lat <= NETHERLANDS_BOUNDS.north &&
-           lng >= NETHERLANDS_BOUNDS.west && 
-           lng <= NETHERLANDS_BOUNDS.east;
-  }
-
-  /**
-   * Fetches all supermarket data with smart caching strategy.
-   * First tries pre-synced data, then cache, then live API calls.
-   * @param forceRefresh - If true, bypasses cache and fetches fresh data
+   * Fetches all supermarket data from available sources.
+   * Priority: Cache → Pre-synced files → Database
+   * @param forceRefresh - If true, bypasses cache
    * @returns Array of supermarket data
-   * @throws Error if all data sources fail
+   * @throws Error if no data sources are available
    */
   async fetchAllSupermarkets(forceRefresh = false): Promise<SupermarketData[]> {
     if (!forceRefresh) {
       const cached = this.getCachedData();
       if (cached) {
+        console.info('Using cached supermarket data');
         return cached;
       }
     }
 
-    // Try to load pre-synced data first
+    // Try to load pre-synced data files
+    const dataSources = [
+      '/src/data/supermarkets.json',
+      '/public/data/supermarkets.json',
+      '/data/supermarkets.json'
+    ];
+
+    for (const dataSource of dataSources) {
+      try {
+        const response = await fetch(dataSource);
+        if (response.ok) {
+          const syncedData = await response.json();
+          if (Array.isArray(syncedData) && syncedData.length > 0) {
+            console.info(`Using pre-synced data from ${dataSource}`);
+            this.setCachedData(syncedData);
+            return syncedData;
+          }
+        }
+      } catch (error) {
+        // Continue to next data source
+        console.debug(`Failed to load ${dataSource}:`, error.message);
+      }
+    }
+
+    // Fallback: Check if database service is available
     try {
-      const response = await fetch('/src/data/supermarkets.json');
-      if (response.ok) {
-        const syncedData = await response.json();
-        if (Array.isArray(syncedData) && syncedData.length > 0) {
-          this.setCachedData(syncedData);
-          return syncedData;
+      const { databaseService } = await import('./databaseService');
+      if (databaseService.isAvailable()) {
+        console.info('Loading supermarket data from database');
+        const dbData = await databaseService.fetchSupermarkets();
+        if (dbData.length > 0) {
+          this.setCachedData(dbData);
+          return dbData;
         }
       }
     } catch (error) {
-      console.info('No pre-synced data available, fetching from API');
+      console.warn('Database fallback failed:', error);
     }
 
-    try {
-      const allResults: SupermarketData[] = [];
-      
-      for (const chain of DUTCH_SUPERMARKET_CHAINS) {
-        try {
-          const query = `${chain} supermarket Netherlands`;
-          const results = await this.searchPlacesByText(query);
-          
-          const converted = results
-            .filter(place => this.isInNetherlands(
-              place.geometry.location.lat, 
-              place.geometry.location.lng
-            ))
-            .map(place => this.convertToSupermarketData(place));
-          
-          allResults.push(...converted);
-          
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } catch (error) {
-          console.warn(`Failed to fetch ${chain}:`, error);
-        }
-      }
-
-      const uniqueResults = this.deduplicateResults(allResults);
-      this.setCachedData(uniqueResults);
-      
-      return uniqueResults;
-    } catch (error) {
-      console.error('Failed to fetch supermarkets:', error);
-      const cached = this.getCachedData();
-      if (cached) {
-        console.info('Returning cached data due to fetch error');
-        return cached;
-      }
-      throw error;
-    }
+    throw new Error('No supermarket data available. Run the sync script to populate data.');
   }
 
   /**
-   * Removes duplicate supermarket entries based on name, address, and city.
-   * @param results - Array of supermarket data that may contain duplicates
-   * @returns Array of unique supermarket data
-   */
-  private deduplicateResults(results: SupermarketData[]): SupermarketData[] {
-    const seen = new Set<string>();
-    const deduplicated: SupermarketData[] = [];
-    
-    for (const result of results) {
-      const key = `${result.name}-${result.address}-${result.city}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        deduplicated.push(result);
-      }
-    }
-    
-    return deduplicated;
-  }
-
-  /**
-   * Forces a refresh of supermarket data, bypassing cache.
-   * @returns Fresh supermarket data from API
+   * Forces a refresh by clearing cache and fetching fresh data.
+   * @returns Fresh supermarket data
    */
   async refreshSupermarkets(): Promise<SupermarketData[]> {
     return this.fetchAllSupermarkets(true);
@@ -310,14 +144,18 @@ class PlacesService {
       return { hasCache: false };
     }
     
-    const cacheData = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
-    const cacheAge = Date.now() - cacheData.timestamp;
-    
-    return {
-      hasCache: true,
-      cacheAge: Math.floor(cacheAge / (1000 * 60)),
-      itemCount: cached.length
-    };
+    try {
+      const cacheData = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+      const cacheAge = Date.now() - cacheData.timestamp;
+      
+      return {
+        hasCache: true,
+        cacheAge: Math.floor(cacheAge / (1000 * 60)),
+        itemCount: cached.length
+      };
+    } catch {
+      return { hasCache: false };
+    }
   }
 
   /**

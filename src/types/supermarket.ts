@@ -7,9 +7,19 @@ export interface SupermarketData {
   postalCode: string;
   latitude: number;
   longitude: number;
-  status: 'open' | 'closed' | 'unknown';
+  googlePlaceId?: string;
+  status: 'open' | 'closed';
   lastUpdated: string;
   reportedBy?: string;
+  openingHours?: {
+    monday: string;
+    tuesday: string;
+    wednesday: string;
+    thursday: string;
+    friday: string;
+    saturday: string;
+    sunday: string;
+  };
   incident?: {
     type: 'machine_broken' | 'store_closed' | 'no_bottles_accepted' | 'other';
     description: string;

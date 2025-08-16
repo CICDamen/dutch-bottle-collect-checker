@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,15 @@ import SupermarketCard from '@/components/SupermarketCard';
 import IncidentReportDialog from '@/components/IncidentReportDialog';
 import IncidentSearchDialog from '@/components/IncidentSearchDialog';
 import { SupermarketData, IncidentReport } from '@/types/supermarket';
+import { IncidentReportForm } from '@/types/incident';
 import { useSupermarkets } from '@/hooks/useSupermarkets';
-import { Recycle, MapPin, AlertCircle, AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { databaseService } from '@/services/databaseService';
+import { Recycle, MapPin, AlertCircle, AlertTriangle, Database } from 'lucide-react';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSupermarket, setSelectedSupermarket] = useState<SupermarketData | null>(null);
+  const [mapSelectedSupermarket, setMapSelectedSupermarket] = useState<SupermarketData | null>(null);
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
   const [isIncidentSearchOpen, setIsIncidentSearchOpen] = useState(false);
   const { toast } = useToast();
@@ -22,12 +25,7 @@ const Index = () => {
   const {
     supermarkets,
     isLoading,
-    error,
-    useGooglePlaces,
-    enableGooglePlaces,
-    disableGooglePlaces,
-    refreshSupermarkets,
-    getCacheInfo
+    error
   } = useSupermarkets();
 
   // Filter supermarkets based on search query
@@ -50,13 +48,25 @@ const Index = () => {
     const total = supermarkets.length;
     const open = supermarkets.filter(s => s.status === 'open').length;
     const closed = supermarkets.filter(s => s.status === 'closed').length;
-    const unknown = supermarkets.filter(s => s.status === 'unknown').length;
     
-    return { total, open, closed, unknown };
+    return { total, open, closed };
   }, [supermarkets]);
+
+  // Auto-zoom to supermarket when search results in single match
+  useEffect(() => {
+    if (filteredSupermarkets.length === 1 && searchQuery.trim()) {
+      setMapSelectedSupermarket(filteredSupermarkets[0]);
+    } else if (!searchQuery.trim()) {
+      setMapSelectedSupermarket(null);
+    }
+  }, [filteredSupermarkets, searchQuery]);
 
   const handleSupermarketSelect = (supermarket: SupermarketData) => {
     setSelectedSupermarket(supermarket);
+  };
+
+  const handleLocationClick = (supermarket: SupermarketData) => {
+    setMapSelectedSupermarket(supermarket);
   };
 
   const handleReportIncident = (supermarket: SupermarketData) => {
@@ -64,52 +74,26 @@ const Index = () => {
     setIsIncidentDialogOpen(true);
   };
 
-  const handleIncidentSubmit = (report: IncidentReport) => {
-    toast({
-      title: "Incident gemeld",
-      description: "Bedankt voor uw melding. Deze functie werkt momenteel alleen met mock data.",
-    });
-  };
+  const handleIncidentSubmit = async (report: IncidentReportForm) => {
+    if (!selectedSupermarket) return;
 
-  const handleToggleGooglePlaces = async () => {
-    if (useGooglePlaces) {
-      disableGooglePlaces();
-      toast({
-        title: "Google Places uitgeschakeld",
-        description: "Gebruikt nu lokale demo data",
-      });
-    } else {
-      try {
-        await enableGooglePlaces();
-        toast({
-          title: "Google Places ingeschakeld",
-          description: "Haalt nu live supermarkt data op",
-        });
-      } catch (error) {
-        toast({
-          title: "Google Places API niet beschikbaar",
-          description: "Configureer VITE_GOOGLE_PLACES_API_KEY in uw .env bestand",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const handleRefresh = async () => {
     try {
-      await refreshSupermarkets();
+      await databaseService.reportIncident(report);
+      
+      setIsIncidentDialogOpen(false);
       toast({
-        title: "Data ververst",
-        description: "Supermarkt locaties zijn bijgewerkt",
+        title: "Incident gemeld",
+        description: "Bedankt voor uw melding. Het incident is geregistreerd en admin is op de hoogte.",
       });
     } catch (error) {
       toast({
-        title: "Refresh mislukt",
-        description: "Kon de data niet vernieuwen",
+        title: "Melding mislukt",
+        description: "Kon het incident niet opslaan. Probeer het opnieuw.",
         variant: "destructive",
       });
     }
   };
+
 
   const handleIncidentSearchSelect = (supermarket: SupermarketData) => {
     setSelectedSupermarket(supermarket);
@@ -145,66 +129,30 @@ const Index = () => {
               />
             </div>
             
-            <div className="flex gap-2">
-              <Button
-                onClick={handleToggleGooglePlaces}
-                variant={useGooglePlaces ? "default" : "outline"}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                {useGooglePlaces ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-                {useGooglePlaces ? "Live Data" : "Demo Data"}
-              </Button>
-              
-              {useGooglePlaces && (
-                <Button
-                  onClick={handleRefresh}
-                  variant="outline"
-                  size="sm"
-                  disabled={isLoading}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  Ververs
-                </Button>
-              )}
-              
-              <Button 
-                onClick={() => setIsIncidentSearchOpen(true)}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                Incident Melden
-              </Button>
-            </div>
+            <Button 
+              onClick={() => setIsIncidentSearchOpen(true)}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Incident Melden
+            </Button>
           </div>
           
-          {/* Data Source Info */}
-          <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              {useGooglePlaces ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-              <span>
-                {useGooglePlaces ? "Live data van Google Places API" : "Demo data"}
-                {isLoading && " (laden...)"}
-              </span>
+          {/* Loading Info */}
+          {isLoading && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <Database className="h-4 w-4" />
+              <span>Database data laden...</span>
             </div>
-            {useGooglePlaces && (() => {
-              const cacheInfo = getCacheInfo();
-              return cacheInfo.hasCache && (
-                <span>
-                  Cache: {cacheInfo.itemCount} locaties, {Math.floor((cacheInfo.cacheAge || 0) / 60)}h oud
-                </span>
-              );
-            })()}
-          </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6">
         {/* Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-foreground">{stats.total}</div>
@@ -221,12 +169,6 @@ const Index = () => {
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-status-closed">{stats.closed}</div>
               <div className="text-sm text-muted-foreground">Gesloten</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-status-unknown">{stats.unknown}</div>
-              <div className="text-sm text-muted-foreground">Onbekend</div>
             </CardContent>
           </Card>
         </div>
@@ -246,6 +188,7 @@ const Index = () => {
                 <Map
                   supermarkets={filteredSupermarkets}
                   searchQuery={searchQuery}
+                  selectedSupermarket={mapSelectedSupermarket}
                   onSupermarketSelect={handleSupermarketSelect}
                 />
               </div>
@@ -278,6 +221,7 @@ const Index = () => {
                     key={supermarket.id}
                     supermarket={supermarket}
                     onReportIncident={handleReportIncident}
+                    onLocationClick={handleLocationClick}
                   />
                 ))
               )}

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Favicon Generator Helper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .bottle-icon {
+            width: 64px;
+            height: 64px;
+            margin: 20px auto;
+            display: block;
+        }
+        .instructions {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        code {
+            background: #e0e0e0;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dutch Bottle Collect Checker</h1>
+    <h2>Favicon Generator</h2>
+    
+    <svg class="bottle-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="64" height="64">
+        <defs>
+            <style>
+                .bottle-body { fill: #10b981; }
+                .bottle-cap { fill: #059669; }
+                .bottle-label { fill: #ffffff; opacity: 0.3; }
+            </style>
+        </defs>
+        
+        <!-- Bottle body -->
+        <path class="bottle-body" d="M11 10 L11 26 Q11 28 13 28 L19 28 Q21 28 21 26 L21 10 Z"/>
+        
+        <!-- Bottle neck -->
+        <rect class="bottle-body" x="13.5" y="6" width="5" height="4" rx="0.5"/>
+        
+        <!-- Bottle cap -->
+        <rect class="bottle-cap" x="12.5" y="4" width="7" height="3" rx="1"/>
+        
+        <!-- Label/highlight -->
+        <rect class="bottle-label" x="13" y="12" width="6" height="8" rx="1"/>
+        
+        <!-- Recycling symbol -->
+        <circle fill="#ffffff" cx="16" cy="16" r="3" opacity="0.8"/>
+        <path fill="#10b981" d="M16 14.5 L17.5 16 L16 17.5 L14.5 16 Z"/>
+    </svg>
+
+    <div class="instructions">
+        <h3>To generate ICO favicon:</h3>
+        <ol>
+            <li>Right-click on the bottle icon above and "Save image as" SVG</li>
+            <li>Visit <code>https://favicon.io/favicon-converter/</code> or similar favicon generator</li>
+            <li>Upload the SVG file</li>
+            <li>Download the generated <code>favicon.ico</code></li>
+            <li>Replace <code>public/favicon.ico</code> with the new file</li>
+        </ol>
+        
+        <p><strong>Or use the existing bottle-icon.svg:</strong></p>
+        <p>The <code>bottle-icon.svg</code> file is already referenced in the HTML and modern browsers will use it automatically.</p>
+    </div>
+
+    <h3>Current Status:</h3>
+    <ul style="text-align: left;">
+        <li>✅ SVG favicon created (<code>bottle-icon.svg</code>)</li>
+        <li>✅ HTML updated with favicon links</li>
+        <li>✅ Project renamed to "Dutch Bottle Collect Checker"</li>
+        <li>⏳ ICO favicon can be generated using online tools</li>
+    </ul>
+</body>
+</html>

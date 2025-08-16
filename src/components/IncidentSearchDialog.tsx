@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SupermarketData } from '@/types/supermarket';
 import { Search, MapPin } from 'lucide-react';
+import { translateStatus } from '@/lib/utils';
 
 interface IncidentSearchDialogProps {
   supermarkets: SupermarketData[];
@@ -45,13 +46,14 @@ const IncidentSearchDialog: React.FC<IncidentSearchDialogProps> = ({
   }, [supermarkets, searchQuery]);
 
   const getStatusBadge = (status: string) => {
+    const statusText = translateStatus(status as 'open' | 'closed' | 'unknown');
     switch (status) {
       case 'open':
-        return <Badge className="bg-status-open hover:bg-status-open text-status-open-foreground">Open</Badge>;
+        return <Badge className="bg-status-open hover:bg-status-open text-status-open-foreground">{statusText}</Badge>;
       case 'closed':
-        return <Badge className="bg-status-closed hover:bg-status-closed text-status-closed-foreground">Gesloten</Badge>;
+        return <Badge className="bg-status-closed hover:bg-status-closed text-status-closed-foreground">{statusText}</Badge>;
       default:
-        return <Badge className="bg-status-unknown hover:bg-status-unknown text-status-unknown-foreground">Onbekend</Badge>;
+        return <Badge className="bg-status-unknown hover:bg-status-unknown text-status-unknown-foreground">{statusText}</Badge>;
     }
   };
 

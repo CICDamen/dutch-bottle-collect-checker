@@ -1,82 +1,70 @@
-import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { SupermarketData } from '@/types/supermarket';
 import { placesService } from '@/services/placesService';
-import { mockSupermarkets } from '@/data/mockSupermarkets';
+import { databaseService } from '@/services/databaseService';
 
-const FALLBACK_TO_MOCK = true;
 
 /**
- * Custom React hook for managing supermarket data with Google Places API integration.
- * Provides seamless switching between mock data and live API data with caching.
+ * Custom React hook for managing supermarket data from Supabase database.
+ * Google Places API has been moved to server-side sync scripts.
  * @returns Object with supermarket data, loading states, and control functions
  */
 export function useSupermarkets() {
-  const [useGooglePlaces, setUseGooglePlaces] = useState(false);
   
-  const { 
-    data: googleSupermarkets, 
-    isLoading: isLoadingGoogle, 
-    error: googleError,
-    refetch: refetchGoogle
+  // Supabase database query
+  const {
+    data: databaseSupermarkets,
+    isLoading: isLoadingDatabase,
+    error: databaseError,
+    refetch: refetchDatabase
   } = useQuery({
-    queryKey: ['supermarkets', 'google'],
-    queryFn: () => placesService.fetchAllSupermarkets(),
-    enabled: useGooglePlaces,
-    staleTime: 1000 * 60 * 60 * 24,
+    queryKey: ['supermarkets', 'database'],
+    queryFn: () => databaseService.fetchSupermarkets(),
+    enabled: databaseService.isAvailable(),
+    staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 2,
-    retryOnMount: false,
   });
 
-  const { 
-    data: mockData, 
-    isLoading: isLoadingMock 
-  } = useQuery({
-    queryKey: ['supermarkets', 'mock'],
-    queryFn: () => Promise.resolve(mockSupermarkets),
-    enabled: !useGooglePlaces || (FALLBACK_TO_MOCK && !!googleError),
-    staleTime: Infinity,
-  });
+  // Mock data is disabled - using database only
 
-  const supermarkets = useGooglePlaces && googleSupermarkets ? googleSupermarkets : mockData || [];
-  const isLoading = useGooglePlaces ? isLoadingGoogle : isLoadingMock;
+  // Use only database data
+  const supermarkets: SupermarketData[] = databaseSupermarkets || [];
+  const isLoading = isLoadingDatabase;
+  const activeError = databaseError;
+
+
 
   /**
-   * Enables Google Places API data fetching if API key is configured.
-   * @throws Error if Google Places API key is not configured
-   */
-  const enableGooglePlaces = async () => {
-    const hasApiKey = !!(import.meta as any).env?.VITE_GOOGLE_PLACES_API_KEY;
-    if (!hasApiKey) {
-      throw new Error('Google Places API key not configured');
-    }
-    setUseGooglePlaces(true);
-  };
-
-  /**
-   * Disables Google Places API and switches back to mock data.
-   */
-  const disableGooglePlaces = () => {
-    setUseGooglePlaces(false);
-  };
-
-  /**
-   * Refreshes supermarket data. Only works when Google Places is enabled.
+   * Refreshes supermarket data from database.
    * @returns Promise that resolves when refresh is complete
    */
   const refreshSupermarkets = async () => {
-    if (useGooglePlaces) {
-      return refetchGoogle();
-    }
-    return Promise.resolve();
+    return refetchDatabase();
   };
 
   /**
-   * Forces a fresh fetch from Google Places API, bypassing all caches.
-   * @returns Fresh supermarket data from Google Places API
+   * Submits user input (status update, incident report, feedback) to database.
+   * @param input - User input data
+   * @returns Promise with input ID
    */
-  const forceRefreshFromGoogle = async () => {
-    return placesService.refreshSupermarkets();
+  const submitUserInput = async (input: {
+    supermarketId: string;
+    userEmail?: string;
+    inputType: 'status_update' | 'incident_report' | 'general_feedback';
+    message: string;
+    status?: 'open' | 'closed' | 'unknown';
+    incidentDescription?: string;
+  }) => {
+    if (!databaseService.isAvailable()) {
+      throw new Error('Database not available for user input');
+    }
+    
+    const inputId = await databaseService.submitUserInput(input);
+    
+    // Refresh data to show updated status
+    await refetchDatabase();
+    
+    return inputId;
   };
 
   const getCacheInfo = () => placesService.getCacheInfo();
@@ -85,12 +73,9 @@ export function useSupermarkets() {
   return {
     supermarkets,
     isLoading,
-    error: googleError,
-    useGooglePlaces,
-    enableGooglePlaces,
-    disableGooglePlaces,
+    error: activeError,
     refreshSupermarkets,
-    forceRefreshFromGoogle,
+    submitUserInput,
     getCacheInfo,
     clearCache,
   };

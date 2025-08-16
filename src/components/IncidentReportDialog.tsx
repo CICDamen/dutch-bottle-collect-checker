@@ -12,13 +12,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { SupermarketData, IncidentReport } from '@/types/supermarket';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SupermarketData } from '@/types/supermarket';
+import { SupermarketIncident, IncidentReportForm } from '@/types/incident';
 
 interface IncidentReportDialogProps {
   supermarket: SupermarketData | null;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (report: IncidentReport) => void;
+  onSubmit: (report: IncidentReportForm) => void;
 }
 
 const IncidentReportDialog: React.FC<IncidentReportDialogProps> = ({
@@ -27,25 +29,31 @@ const IncidentReportDialog: React.FC<IncidentReportDialogProps> = ({
   onClose,
   onSubmit,
 }) => {
-  const [reportType, setReportType] = useState<IncidentReport['type']>('machine_broken');
+  const [reportType, setReportType] = useState<SupermarketIncident['incident_type']>('machine_broken');
   const [description, setDescription] = useState('');
   const [reporterName, setReporterName] = useState('');
+  const [reporterEmail, setReporterEmail] = useState('');
+  const [priority, setPriority] = useState<SupermarketIncident['priority']>('medium');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!supermarket) return;
 
     onSubmit({
-      supermarketId: supermarket.id,
-      type: reportType,
+      supermarket_id: supermarket.id,
+      incident_type: reportType,
       description,
-      reporterName,
+      reporter_name: reporterName,
+      reporter_email: reporterEmail || undefined,
+      priority,
     });
 
     // Reset form
     setDescription('');
     setReporterName('');
+    setReporterEmail('');
     setReportType('machine_broken');
+    setPriority('medium');
     onClose();
   };
 
@@ -64,24 +72,43 @@ const IncidentReportDialog: React.FC<IncidentReportDialogProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-3">
             <Label>Type incident</Label>
-            <RadioGroup value={reportType} onValueChange={(value) => setReportType(value as IncidentReport['type'])}>
+            <RadioGroup value={reportType} onValueChange={(value) => setReportType(value as SupermarketIncident['incident_type'])}>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="machine_broken" id="machine_broken" />
                 <Label htmlFor="machine_broken">Automaat defect</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="store_closed" id="store_closed" />
-                <Label htmlFor="store_closed">Winkel gesloten</Label>
+                <RadioGroupItem value="machine_full" id="machine_full" />
+                <Label htmlFor="machine_full">Automaat vol</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="machine_offline" id="machine_offline" />
+                <Label htmlFor="machine_offline">Automaat offline</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="no_bottles_accepted" id="no_bottles_accepted" />
                 <Label htmlFor="no_bottles_accepted">Flessen worden niet geaccepteerd</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="other" id="other" />
-                <Label htmlFor="other">Anders</Label>
+                <RadioGroupItem value="partial_functionality" id="partial_functionality" />
+                <Label htmlFor="partial_functionality">Gedeeltelijke functionaliteit</Label>
               </div>
             </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="priority">Prioriteit</Label>
+            <Select value={priority} onValueChange={(value) => setPriority(value as SupermarketIncident['priority'])}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Laag</SelectItem>
+                <SelectItem value="medium">Gemiddeld</SelectItem>
+                <SelectItem value="high">Hoog</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -103,6 +130,17 @@ const IncidentReportDialog: React.FC<IncidentReportDialogProps> = ({
               placeholder="Naam"
               value={reporterName}
               onChange={(e) => setReporterName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="reporterEmail">Uw email (optioneel)</Label>
+            <Input
+              id="reporterEmail"
+              type="email"
+              placeholder="email@example.com"
+              value={reporterEmail}
+              onChange={(e) => setReporterEmail(e.target.value)}
             />
           </div>
 

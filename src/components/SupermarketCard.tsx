@@ -4,24 +4,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SupermarketData } from '@/types/supermarket';
 import { MapPin, Clock, AlertTriangle } from 'lucide-react';
+import { translateStatus } from '@/lib/utils';
 
 interface SupermarketCardProps {
   supermarket: SupermarketData;
   onReportIncident: (supermarket: SupermarketData) => void;
+  onLocationClick?: (supermarket: SupermarketData) => void;
 }
 
 const SupermarketCard: React.FC<SupermarketCardProps> = ({ 
   supermarket, 
-  onReportIncident 
+  onReportIncident,
+  onLocationClick 
 }) => {
   const getStatusBadge = () => {
+    const statusText = translateStatus(supermarket.status);
     switch (supermarket.status) {
       case 'open':
-        return <Badge className="bg-status-open hover:bg-status-open text-status-open-foreground">Inzameling Open</Badge>;
+        return <Badge className="bg-status-open hover:bg-status-open text-status-open-foreground">{statusText}</Badge>;
       case 'closed':
-        return <Badge className="bg-status-closed hover:bg-status-closed text-status-closed-foreground">Inzameling Gesloten</Badge>;
+        return <Badge className="bg-status-closed hover:bg-status-closed text-status-closed-foreground">{statusText}</Badge>;
       default:
-        return <Badge className="bg-status-unknown hover:bg-status-unknown text-status-unknown-foreground">Status Onbekend</Badge>;
+        return <Badge className="bg-status-closed hover:bg-status-closed text-status-closed-foreground">{statusText}</Badge>;
     }
   };
 
@@ -51,7 +55,17 @@ const SupermarketCard: React.FC<SupermarketCardProps> = ({
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
-            Laatst bijgewerkt: {formatDateTime(supermarket.lastUpdated)}
+            Laatst bijgewerkt: {(() => {
+              const lastUpdated = new Date(supermarket.lastUpdated);
+              const incidentDate = supermarket.incident ? new Date(supermarket.incident.reportedAt) : null;
+              
+              // Show incident timestamp if it's more recent than last updated
+              if (incidentDate && incidentDate > lastUpdated) {
+                return formatDateTime(supermarket.incident.reportedAt);
+              }
+              
+              return formatDateTime(supermarket.lastUpdated);
+            })()}
           </span>
         </div>
 
@@ -61,21 +75,33 @@ const SupermarketCard: React.FC<SupermarketCardProps> = ({
             <div className="text-sm">
               <p className="font-medium text-status-closed">Gemeld incident:</p>
               <p className="text-muted-foreground">{supermarket.incident.description}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formatDateTime(supermarket.incident.reportedAt)} door {supermarket.incident.reportedBy}
-              </p>
             </div>
           </div>
         )}
 
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full mt-4"
-          onClick={() => onReportIncident(supermarket)}
-        >
-          Incident Melden
-        </Button>
+        <div className="flex gap-2 mt-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={() => onReportIncident(supermarket)}
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Incident Melden
+          </Button>
+          
+          {onLocationClick && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={() => onLocationClick(supermarket)}
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Toon op Kaart
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
