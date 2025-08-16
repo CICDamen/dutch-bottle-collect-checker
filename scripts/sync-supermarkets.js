@@ -27,18 +27,31 @@ const DUTCH_SUPERMARKET_CHAINS = [
   'Albert Heijn',
   'Jumbo',
   'Lidl',
-  // 'Plus Supermarkt',
-  // 'Aldi',
-  // 'Coop',
-  // 'Dirk van den Broek',
-  // 'Dirk',
-  // 'Nettorama',
-  // 'Picnic',
-  // 'SPAR',
-  // 'Vomar',
-  // 'DekaMarkt',
-  // 'Boni',
-  // 'MCD Supermarkten'
+  'Plus Supermarkt',
+  'Aldi',
+  'Coop',
+  'Dirk van den Broek',
+  'Dirk',
+  'Nettorama',
+  'SPAR',
+  'Vomar',
+  'DekaMarkt',
+  'Boni',
+  'MCD Supermarkten'
+];
+
+const DUTCH_CITIES = [
+  'Utrecht',
+  // Add more cities as needed
+  // 'Amsterdam',
+  // 'Rotterdam',
+  // 'Den Haag',
+  // 'Eindhoven',
+  // 'Tilburg',
+  // 'Groningen',
+  // 'Almere',
+  // 'Breda',
+  // 'Nijmegen'
 ];
 
 const NETHERLANDS_BOUNDS = {
@@ -48,8 +61,12 @@ const NETHERLANDS_BOUNDS = {
   west: 3.2
 };
 
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+// Initialize Supabase client with bottle_collection schema
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+  db: {
+    schema: 'bottle_collection'
+  }
+});
 
 /**
  * Check if coordinates are within Netherlands boundaries
@@ -204,7 +221,6 @@ async function convertToSupermarketData(place) {
   
   // Find postal code (Dutch format: 1234 AB or 1234AB)
   const postalCodeRegex = /\b(\d{4}\s?[A-Z]{2})\b/;
-  let postalCodePart = null;
   
   // Look for postal code in the address parts (usually towards the end)
   for (let i = addressParts.length - 1; i >= 0; i--) {
@@ -212,7 +228,6 @@ async function convertToSupermarketData(place) {
     const match = part.match(postalCodeRegex);
     if (match) {
       postalCode = match[1].replace(/\s+/g, ' '); // Normalize spacing
-      postalCodePart = part;
       
       // Extract city name from the same part (everything after postal code)
       const cityMatch = part.replace(postalCode, '').trim();
@@ -289,39 +304,71 @@ async function convertToSupermarketData(place) {
 }
 
 /**
- * Search for places using Google Places Text Search API
+ * Search for places using Google Places Text Search API with pagination
  */
 async function searchPlacesByText(query) {
   if (!GOOGLE_PLACES_API_KEY) {
     throw new Error('Google Places API key not configured. Set GOOGLE_PLACES_API_KEY environment variable.');
   }
 
-  const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
-  url.searchParams.append('query', query);
-  url.searchParams.append('key', GOOGLE_PLACES_API_KEY);
-  url.searchParams.append('type', 'supermarket');
-  url.searchParams.append('region', 'nl');
-  url.searchParams.append('fields', 'place_id,name,formatted_address,geometry,business_status,opening_hours');
+  let allResults = [];
+  let nextPageToken = null;
+  let pageCount = 0;
+  const maxPages = 3; // Limit to 3 pages (60 results max per query)
 
-  console.log(`🔍 Searching: ${query}`);
-  
-  const response = await fetch(url.toString());
-  
-  if (!response.ok) {
-    throw new Error(`Places API error: ${response.status} - ${response.statusText}`);
-  }
+  do {
+    const url = new URL('https://maps.googleapis.com/maps/api/place/textsearch/json');
+    url.searchParams.append('query', query);
+    url.searchParams.append('key', GOOGLE_PLACES_API_KEY);
+    url.searchParams.append('type', 'supermarket');
+    url.searchParams.append('region', 'nl');
+    url.searchParams.append('fields', 'place_id,name,formatted_address,geometry,business_status,opening_hours');
+    
+    if (nextPageToken) {
+      url.searchParams.append('pagetoken', nextPageToken);
+    }
 
-  const data = await response.json();
-  
-  if (data.status === 'REQUEST_DENIED') {
-    throw new Error(`Places API access denied: ${data.error_message || 'Check API key and permissions'}`);
-  }
-  
-  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-    throw new Error(`Places API status: ${data.status} - ${data.error_message || 'Unknown error'}`);
-  }
+    console.log(`🔍 Searching: ${query} (page ${pageCount + 1})`);
+    
+    // If this is a paginated request, wait for the required delay
+    if (nextPageToken) {
+      console.log('   ⏳ Waiting for pagination delay...');
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Google requires 2 second delay
+    }
+    
+    const response = await fetch(url.toString());
+    
+    if (!response.ok) {
+      throw new Error(`Places API error: ${response.status} - ${response.statusText}`);
+    }
 
-  return data.results || [];
+    const data = await response.json();
+    
+    if (data.status === 'REQUEST_DENIED') {
+      throw new Error(`Places API access denied: ${data.error_message || 'Check API key and permissions'}`);
+    }
+    
+    if (data.status === 'INVALID_REQUEST' && nextPageToken) {
+      console.log('   ⚠️  Invalid page token, stopping pagination');
+      break;
+    }
+    
+    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      throw new Error(`Places API status: ${data.status} - ${data.error_message || 'Unknown error'}`);
+    }
+
+    if (data.results && data.results.length > 0) {
+      allResults.push(...data.results);
+      console.log(`   📍 Found ${data.results.length} results on page ${pageCount + 1}`);
+    }
+
+    nextPageToken = data.next_page_token;
+    pageCount++;
+    
+  } while (nextPageToken && pageCount < maxPages);
+
+  console.log(`   ✅ Total results for "${query}": ${allResults.length}`);
+  return allResults;
 }
 
 /**
@@ -472,39 +519,43 @@ async function syncSupermarkets() {
     const allResults = [];
     let totalFetched = 0;
     
-    // Fetch data for each supermarket chain
-    for (const chain of DUTCH_SUPERMARKET_CHAINS) {
-      try {
-        const query = `${chain} supermarket Netherlands`;
-        const results = await searchPlacesByText(query);
-        
-        const filteredResults = results.filter(place => isInNetherlands(
-          place.geometry.location.lat, 
-          place.geometry.location.lng
-        ));
-        
-        const converted = [];
-        for (const place of filteredResults) {
-          const convertedPlace = await convertToSupermarketData(place);
-          // Log first few results for debugging address parsing
-          if (allResults.length < 3) {
-            console.log(`   📍 ${place.name} - ${place.formatted_address}`);
-            console.log(`      → Address: "${convertedPlace.address}", City: "${convertedPlace.city}", Postal: "${convertedPlace.postal_code}"`);
+    // Fetch data for each city and supermarket chain combination
+    for (const city of DUTCH_CITIES) {
+      console.log(`\n🏙️  Processing ${city}...`);
+      
+      for (const chain of DUTCH_SUPERMARKET_CHAINS) {
+        try {
+          const query = `${chain} supermarket ${city} Netherlands`;
+          const results = await searchPlacesByText(query);
+          
+          const filteredResults = results.filter(place => isInNetherlands(
+            place.geometry.location.lat, 
+            place.geometry.location.lng
+          ));
+          
+          const converted = [];
+          for (const place of filteredResults) {
+            const convertedPlace = await convertToSupermarketData(place);
+            // Log first few results for debugging address parsing
+            if (allResults.length < 3) {
+              console.log(`   📍 ${place.name} - ${place.formatted_address}`);
+              console.log(`      → Address: "${convertedPlace.address}", City: "${convertedPlace.city}", Postal: "${convertedPlace.postal_code}"`);
+            }
+            converted.push(convertedPlace);
           }
-          converted.push(convertedPlace);
+          
+          allResults.push(...converted);
+          totalFetched += converted.length;
+          
+          console.log(`✅ ${city} - ${chain}: ${converted.length} locations found`);
+          
+          // Rate limiting: wait 500ms between requests (more conservative due to pagination)
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+        } catch (error) {
+          console.error(`❌ Failed to fetch ${city} - ${chain}:`, error.message);
+          // Continue with other chains/cities
         }
-        
-        allResults.push(...converted);
-        totalFetched += converted.length;
-        
-        console.log(`✅ ${chain}: ${converted.length} locations found`);
-        
-        // Rate limiting: wait 200ms between requests
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-      } catch (error) {
-        console.error(`❌ Failed to fetch ${chain}:`, error.message);
-        // Continue with other chains
       }
     }
 
