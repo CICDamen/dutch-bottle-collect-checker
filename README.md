@@ -7,9 +7,8 @@ A web application to help users find supermarket locations in the Netherlands fo
 - 🗺️ **Interactive Map**: View all supermarket locations on an interactive Google Maps interface
 - 📍 **Smart Search**: Find supermarkets by name, chain, city, or postal code
 - 📊 **Real-time Status**: See which locations are open, closed, or have unknown status
-- 🔄 **Live/Demo Toggle**: Switch between demo data and live Google Places API data
-- 💾 **Smart Caching**: 24-hour localStorage cache to minimize API costs
-- 🤖 **Automated Sync**: Daily background sync via GitHub Actions
+-  **Smart Caching**: 24-hour localStorage cache for optimal performance
+- 🔄 **Backend Sync**: Manual/scheduled sync with Google Places API via server scripts
 - 📱 **Responsive Design**: Works on desktop and mobile devices
 - ⚠️ **Incident Reporting**: Report issues with bottle return machines
 - 👨‍💼 **Admin Dashboard**: Manage incidents and supermarket data
@@ -51,8 +50,8 @@ App available at `http://localhost:5173` | Admin at `http://localhost:5173/admin
 ## Technology Stack
 
 **Frontend:** React + TypeScript, Vite, shadcn/ui + Tailwind CSS, Google Maps React API  
-**Backend:** Supabase (PostgreSQL), Google Places API, Real-time subscriptions  
-**State Management:** TanStack Query with smart caching strategies
+**Backend:** Supabase (PostgreSQL), Google Places API (server-side sync), Real-time subscriptions  
+**State Management:** TanStack Query with database-first caching strategies
 
 ## Available Scripts
 
@@ -67,6 +66,9 @@ bunx supabase start  # Start local Supabase (requires Docker)
 bunx supabase stop   # Stop local Supabase
 bunx supabase status # Check local Supabase status
 bunx supabase db reset # Reset local database to initial state
+
+# Data synchronization (requires Google Places API key)
+node scripts/sync-supermarkets.js # Sync supermarket data from Google Places API
 ```
 
 ## Project Structure
@@ -109,7 +111,10 @@ dutch-bottle-collect-checker/
    - Main app: `http://localhost:5173`
    - Admin dashboard: `http://localhost:5173/admin`
    - Supabase dashboard: `http://localhost:54323`
-3. **Testing**: Report incidents via main app, manage in admin dashboard
+3. **Data Management**:
+   - **Initial Setup**: Run `node scripts/sync-supermarkets.js` to populate database with Google Places data
+   - **Ongoing Updates**: Re-run sync script as needed or set up scheduled automation
+4. **Testing**: Report incidents via main app, manage in admin dashboard
 
 ## Known Issues / TODOs
 

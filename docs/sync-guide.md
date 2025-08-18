@@ -46,14 +46,8 @@ node scripts/sync-supermarkets.js
 ### What the Sync Script Does
 
 #### Data Collection
-- **Search Coverage**: Searches for supermarkets across major Dutch cities including:
-  - Amsterdam, Rotterdam, The Hague, Utrecht, Eindhoven
-  - Groningen, Tilburg, Almere, Breda, Nijmegen
-  - And many more municipalities
-
-- **Search Terms**: Uses comprehensive search queries:
-  - Generic: "supermarket", "grocery store"
-  - Chain-specific: "Albert Heijn", "Jumbo", "PLUS", "Lidl", "Aldi", etc.
+- **Search Coverage**: Searches for supermarkets across major Dutch cities depending on the `CITIES` array in the script.
+- **Search Terms**: Searches for type "supermarket".
 
 #### Data Processing
 - **Duplicate Prevention**: Uses Google Place ID as unique identifier
@@ -157,7 +151,7 @@ jobs:
 
 #### Post-Sync Verification
 1. **Check Supabase Dashboard**: Review the `supermarkets` table
-2. **Application Testing**: Switch to "Database" mode in the app
+2. **Application Testing**: Refresh the app to fetch new data
 3. **Map Verification**: Confirm new locations appear on the map
 
 #### Monitoring Sync Health

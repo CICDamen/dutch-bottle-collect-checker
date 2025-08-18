@@ -24,8 +24,8 @@ The Dutch Bottle Collect Checker is a modern web application built with a React 
 - **Context API** - Global state sharing
 
 **Maps & Location**
-- **Google Maps React API** - Interactive map component
-- **Google Places API** - Location data and search
+- **Google Maps React API** - Interactive map component for frontend display
+- **Google Places API** - Location data and search (server-side sync only)
 
 ### Backend Architecture
 
@@ -63,34 +63,14 @@ App (Router)
     └── Loading States
 ```
 
-### Data Flow Architecture
-
-```mermaid
-graph TD
-    A[User Interaction] --> B[React Components]
-    B --> C[Custom Hooks]
-    C --> D[Service Layer]
-    D --> E[Supabase Client]
-    E --> F[PostgreSQL Database]
-    
-    G[Google Places API] --> H[Sync Script]
-    H --> F
-    
-    F --> I[Real-time Subscriptions]
-    I --> C
-    
-    J[Admin Interface] --> K[Admin Functions]
-    K --> F
-```
-
 ### Service Layer Design
 
 **Data Services**
 - `databaseService.ts` - Supabase integration and real-time subscriptions
-- `placesService.ts` - Google Places API integration (fallback)
+- `placesService.ts` - Cache management and data file loading (no direct API calls)
 
 **Custom Hooks**
-- `useSupermarkets.ts` - Supermarket data management with multiple sources
+- `useSupermarkets.ts` - Database-first data management with intelligent fallbacks
 - `use-toast.ts` - Notification management
 
 **Utility Libraries**
@@ -217,87 +197,67 @@ USING (auth.jwt() ->> 'role' = 'supermarket_admin');
 
 ### Data Synchronization Strategy
 
-**Priority Hierarchy**
-1. **Database** (Primary) - Local Supabase with real-time updates
-2. **Google Places API** (Fallback) - Live data when database unavailable
-3. **Mock Data** (Development) - Built-in demo data
+**Primary Data Sources**
+1. **Database** (Primary) - Supabase PostgreSQL with real-time updates
+2. **Static Data Files** (Fallback) - Pre-synced JSON files for development
+3. **Mock Data** (Development) - Built-in demo data for testing
+
+**Sync Architecture**
+The Google Places API integration operates as a backend synchronization process rather than real-time client-side calls. This approach provides better cost control, rate limiting, and performance.
+
+- **Manual Sync**: Server-side scripts fetch and process data from Google Places API
+- **Scheduled Updates**: Can be automated via GitHub Actions or cron jobs
+- **Data Processing**: Server handles deduplication, geocoding validation, and status determination
+- **Database Population**: Processed data is inserted/updated in Supabase PostgreSQL
 
 **Real-time Features**
-- **Live incident updates** - New reports appear immediately
-- **Status changes** - Admin updates reflected instantly
-- **Map updates** - Marker states change in real-time
+- **Live incident updates** - New reports appear immediately via Supabase real-time
+- **Status changes** - Admin updates reflected instantly across all clients
+- **Map updates** - Marker states change in real-time through database subscriptions
 
 ### Caching Strategy
 
-**Browser Caching**
-- **TanStack Query** - 5-minute cache for supermarket data
-- **LocalStorage** - Persistent storage for user preferences
-- **Service Worker** - Future enhancement for offline support
+**Frontend Caching**
+- **TanStack Query** - 5-minute cache for database queries with automatic invalidation
+- **LocalStorage** - 24-hour cache for supermarket data to improve load times
+- **React Query Deduplication** - Prevents duplicate network requests
 
-**Database Caching**
-- **Connection pooling** - Efficient database connections
-- **Query optimization** - Indexed searches and joins
-- **Computed columns** - Pre-calculated status values
+**Backend Optimization**
+- **Connection pooling** - Efficient database connections via Supabase
+- **Query optimization** - Indexed searches and optimized joins
+- **Batch operations** - Efficient bulk updates during sync operations
 
 ## State Management Patterns
 
 ### Client State Architecture
 
-```typescript
-// Custom hook pattern for data management
-export function useSupermarkets() {
-  return useQuery({
-    queryKey: ['supermarkets'],
-    queryFn: async () => {
-      // Try database first, fallback to API
-      return await databaseService.getSupermarkets() || 
-             await placesService.getSupermarkets();
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true
-  });
-}
-```
+The application uses a data-fetching strategy that prioritizes database content with intelligent fallbacks, managed through custom hooks that abstract the complexity from UI components.
 
-**State Flow**
+**Data Flow Pattern**
+The `useSupermarkets` hook (see `src/hooks/useSupermarkets.ts`) implements a database-first approach:
 1. Component mounts → Custom hook called
-2. Hook checks cache → Returns cached data if fresh
-3. Cache stale → Fetch from database
-4. Database unavailable → Fallback to Google Places API
-5. API unavailable → Return mock data
-6. Real-time updates → Invalidate cache, trigger refetch
+2. Hook checks TanStack Query cache → Returns cached data if fresh
+3. Cache stale → Fetch from Supabase database
+4. Database unavailable → Fallback to static data files
+5. All sources unavailable → Return mock data for development
+6. Real-time updates → Database subscriptions invalidate cache, trigger automatic refetch
+
+**State Management Principles**
+- **Single Source of Truth**: Database acts as the authoritative data source
+- **Optimistic Updates**: UI updates immediately for better user experience, with rollback on errors
+- **Cache Invalidation**: Strategic cache clearing ensures data consistency
+- **Error Boundaries**: Graceful degradation when data sources are unavailable
 
 ### Server State Synchronization
 
-**Optimistic Updates**
-```typescript
-// Incident reporting with optimistic UI
-const reportIncident = useMutation({
-  mutationFn: databaseService.createIncident,
-  onMutate: async (newIncident) => {
-    // Cancel outgoing refetches
-    await queryClient.cancelQueries(['supermarkets']);
-    
-    // Snapshot current state
-    const previousData = queryClient.getQueryData(['supermarkets']);
-    
-    // Optimistically update cache
-    queryClient.setQueryData(['supermarkets'], (old) => 
-      updateSupermarketWithIncident(old, newIncident)
-    );
-    
-    return { previousData };
-  },
-  onError: (err, variables, context) => {
-    // Rollback on error
-    queryClient.setQueryData(['supermarkets'], context.previousData);
-  },
-  onSettled: () => {
-    // Refetch to sync with server
-    queryClient.invalidateQueries(['supermarkets']);
-  }
-});
-```
+**Optimistic UI Updates**
+For user-facing operations like incident reporting, the application implements optimistic updates through TanStack Query mutations. The pattern involves:
+- Immediate UI feedback by updating local cache
+- Background API call to persist changes
+- Automatic rollback if the operation fails
+- Cache invalidation and refetch to ensure consistency
+
+Implementation details can be found in the database service (`src/services/databaseService.ts`) and the incident reporting components.
 
 ## Security Architecture
 
@@ -393,7 +353,7 @@ Local Machine
 │   ├── API Gateway :54321
 │   ├── Studio :54323
 │   └── Realtime :54324
-└── Node.js Sync Scripts
+└── Node.js Sync Scripts (Manual execution)
 ```
 
 ### Production Environment
@@ -406,8 +366,8 @@ Cloud Infrastructure
 │   ├── Edge Functions
 │   ├── Real-time Engine
 │   └── Authentication
-└── GitHub Actions
-    └── Automated Sync Jobs
+└── Scheduled Sync (Manual/GitHub Actions)
+    └── Google Places API Sync Scripts
 ```
 
 ## Monitoring & Observability

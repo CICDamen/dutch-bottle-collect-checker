@@ -23,7 +23,7 @@ bunx supabase start
 
 This will start all Supabase services locally and automatically:
 - Apply database migrations
-- Set up the admin user and incidents table
+- Set up relevant tables and policies
 - Generate local environment configuration
 
 ### 3. Start Development Server
@@ -39,19 +39,7 @@ The app will be available at `http://localhost:5173`
 
 ## Environment Configuration
 
-When you run `bunx supabase start`, it automatically creates a `.env.local` file with the local Supabase configuration. For additional features, you can add:
-
-```env
-# Optional: Google Places API Key (for live supermarket data)
-# Note: Google Places Text Search API has CORS restrictions in browsers
-VITE_GOOGLE_PLACES_API_KEY=your_google_places_api_key_here
-```
-
-**Important Note on Google Places API**: The Google Places Text Search API does not support CORS (Cross-Origin Resource Sharing) when called directly from browsers. This means:
-
-- ✅ **Database Mode**: Use local Supabase with pre-synchronized data (recommended)
-- ✅ **Mock Data Mode**: Use built-in demo data for development
-- ❌ **Live API Mode**: Direct Google Places API calls will fail with CORS errors in browsers
+When you run `bunx supabase start`, it automatically creates a `.env.local` file with the local Supabase configuration. You can also checkout the `.env.example` file for reference.
 
 For production use with live Google Places data, use the server-side synchronization script described in the [Synchronization Guide](./sync-guide.md).
 
