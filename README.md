@@ -69,6 +69,11 @@ bunx supabase db reset # Reset local database to initial state
 
 # Data synchronization (requires Google Places API key)
 node scripts/sync-supermarkets.js # Sync supermarket data from Google Places API
+
+# Docker deployment
+docker build -t dutch-bottle-checker . # Build Docker image
+docker run -p 8080:8080 dutch-bottle-checker # Run container
+docker-compose up -d  # Run with docker-compose
 ```
 
 ## Project Structure
@@ -116,6 +121,53 @@ dutch-bottle-collect-checker/
    - **Ongoing Updates**: Re-run sync script as needed or set up scheduled automation
 4. **Testing**: Report incidents via main app, manage in admin dashboard
 
+## Docker Deployment
+
+### Quick Docker Setup
+
+```bash
+# Build and run with Docker
+docker build -t dutch-bottle-checker .
+docker run -p 8080:8080 -e VITE_SUPABASE_URL=your-url -e VITE_SUPABASE_ANON_KEY=your-key dutch-bottle-checker
+```
+
+### Docker Compose Setup
+
+1. **Copy environment file**:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Configure environment variables** in `.env`:
+   ```bash
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+   ```
+
+3. **Start the application**:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Access the application**:
+   - Application: `http://localhost:8080`
+   - Health check: `http://localhost:8080/health`
+
+### Production Deployment
+
+For production deployment, consider:
+- Using a proper domain with HTTPS
+- Setting up environment variables in your hosting platform
+- Configuring proper logging and monitoring
+- Setting up automated backups for your Supabase database
+
+**Deployment Platforms:**
+- **Docker**: Use the provided Dockerfile with any Docker-compatible platform
+- **Cloud Run**: Deploy directly from container registry
+- **Kubernetes**: Use the Docker image with appropriate manifests
+- **Railway/Render**: Deploy using the Dockerfile
+
 ## Known Issues / TODOs
 
 ### Google Maps Integration
@@ -130,6 +182,24 @@ See [Troubleshooting Guide](./docs/troubleshooting.md) for solutions to these an
 - Role-based permissions with `supermarket_admin` user metadata
 - All admin functions include proper authorization checks
 - Database functions use `SECURITY DEFINER` with access control
+
+## License
+
+This project is licensed under a **Non-Commercial Use License**.
+
+**Permitted Uses:**
+- ✅ Personal use and learning
+- ✅ Educational purposes
+- ✅ Open source contributions
+- ✅ Research and development
+
+**Prohibited Uses:**
+- ❌ Commercial use by third parties
+- ❌ Redistribution for profit
+- ❌ Integration into commercial products without permission
+- ❌ Selling or licensing derivatives
+
+For commercial licensing inquiries, please contact the repository owner.
 
 ## Support
 

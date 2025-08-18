@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Add your environment variables here
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - VITE_GOOGLE_MAPS_API_KEY=${VITE_GOOGLE_MAPS_API_KEY}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Include local Supabase for development
+  # Uncomment the following section if you want to run Supabase alongside the app
+  # 
+  # supabase-db:
+  #   image: supabase/postgres:15.1.0.117
+  #   environment:
+  #     POSTGRES_PASSWORD: your-super-secret-and-long-postgres-password
+  #     POSTGRES_DB: postgres
+  #   ports:
+  #     - "54322:5432"
+  #   volumes:
+  #     - supabase-db-data:/var/lib/postgresql/data
+  #
+  # supabase-api:
+  #   image: supabase/gotrue:v2.99.0
+  #   depends_on:
+  #     - supabase-db
+  #   environment:
+  #     GOTRUE_API_HOST: 0.0.0.0
+  #     GOTRUE_API_PORT: 9999
+  #     API_EXTERNAL_URL: http://localhost:54321
+  #     GOTRUE_DB_DRIVER: postgres
+  #     GOTRUE_DB_DATABASE_URL: postgresql://supabase_auth_admin:root@supabase-db:5432/postgres
+  #     GOTRUE_SITE_URL: http://localhost:5173
+  #     GOTRUE_URI_ALLOW_LIST: "http://localhost:5173"
+  #   ports:
+  #     - "54321:9999"
+
+# volumes:
+#   supabase-db-data:
