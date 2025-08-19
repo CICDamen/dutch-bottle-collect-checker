@@ -112,7 +112,6 @@ Google Maps JavaScript API error: MissingKeyMapError
 ```
 **Solution:**
 - **For basic usage**: Google Maps should work without API key
-- **For production**: Add `VITE_GOOGLE_MAPS_API_KEY` to environment
 - Check browser console for specific error details
 
 **❌ Error: "Development watermark showing"**
