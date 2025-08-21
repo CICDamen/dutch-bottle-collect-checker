@@ -7,7 +7,7 @@
  * Usage: node scripts/sync-supermarkets.js
  * 
  * Environment variables required:
- * - GOOGLE_PLACES_API_KEY: Google Places API key
+ * - VITE_GOOGLE_PLACES_API_KEY: Google Places API key
  * - SUPABASE_URL: Local Supabase URL (default: http://127.0.0.1:54321)
  * - SUPABASE_SERVICE_KEY: Supabase service role key (for local dev, use anon key)
  */
@@ -19,7 +19,7 @@ import { config } from 'dotenv';
 // Load environment variables
 config();
 
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY;
+const GOOGLE_PLACES_API_KEY = process.env.VITE_GOOGLE_PLACES_API_KEY;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -308,7 +308,7 @@ async function convertToSupermarketData(place) {
  */
 async function searchPlacesByText(query) {
   if (!GOOGLE_PLACES_API_KEY) {
-    throw new Error('Google Places API key not configured. Set GOOGLE_PLACES_API_KEY environment variable.');
+    throw new Error('Google Places API key not configured. Set VITE_GOOGLE_PLACES_API_KEY environment variable.');
   }
 
   let allResults = [];
@@ -506,7 +506,7 @@ async function syncSupermarkets() {
     console.log(`🔑 Google API Key configured: ${!!GOOGLE_PLACES_API_KEY}`);
     
     if (!GOOGLE_PLACES_API_KEY) {
-      throw new Error('Google Places API key is required. Set GOOGLE_PLACES_API_KEY in your .env file.');
+      throw new Error('Google Places API key is required. Set VITE_GOOGLE_PLACES_API_KEY in your .env file.');
     }
 
     // Test Supabase connection

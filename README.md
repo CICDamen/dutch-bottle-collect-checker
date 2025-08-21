@@ -142,7 +142,7 @@ docker run -p 8080:8080 -e VITE_SUPABASE_URL=your-url -e VITE_SUPABASE_ANON_KEY=
    ```bash
    VITE_SUPABASE_URL=https://your-project-id.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key-here
-   VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+   VITE_GOOGLE_PLACES_API_KEY=your-google-places-api-key
    ```
 
 3. **Start the application**:
@@ -168,11 +168,23 @@ For production deployment, consider:
 - **Kubernetes**: Use the Docker image with appropriate manifests
 - **Railway/Render**: Deploy using the Dockerfile
 
+## Environment Variables
+
+This project uses a single Google Places API key for both client-side maps and server-side data synchronization:
+
+- **`VITE_GOOGLE_PLACES_API_KEY`**: Google Places API key used for:
+  - Frontend Google Maps integration (React component)  
+  - Backend data synchronization (Node.js sync script)
+  - The `VITE_` prefix is required by Vite to expose the variable to client-side code
+
+**Why VITE_ prefix?** Vite only exposes environment variables with the `VITE_` prefix to the browser for security. The same variable works for server-side Node.js scripts since `process.env` can access all environment variables.
+
 ## Known Issues / TODOs
 
 ### Google Maps Integration
+- ✅ **RESOLVED**: Google Maps "This page can't load Google Maps correctly" error
+  - **Solution**: Ensure `VITE_GOOGLE_PLACES_API_KEY` is set in your `.env` file
 - **Resolve Google Maps watermark showing "for development purposes only"**
-- **Resolve message: "This page can't load Google Maps correctly. Do you own this website?"**
 
 See [Troubleshooting Guide](./docs/troubleshooting.md) for solutions to these and other common issues.
 

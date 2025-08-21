@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "sync": "node scripts/sync-supermarkets.js",
-    "sync:help": "echo 'Usage: bun run sync (requires GOOGLE_PLACES_API_KEY in .env)'"
+    "sync:help": "echo 'Usage: bun run sync (requires VITE_GOOGLE_PLACES_API_KEY in .env)'"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

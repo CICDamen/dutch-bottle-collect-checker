@@ -25,6 +25,13 @@
 - Schema file: `supabase/migrations/20240101000000_initial_schema.sql` - applied automatically
 - Remote deployment: Use Supabase SQL Editor or CLI with `supabase db push`
 
+## Docker Deployment
+- **Build Args Required**: For Docker builds, environment variables must be passed as build arguments:
+  - `VITE_SUPABASE_URL` - Your Supabase project URL
+  - `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous key
+- **Coolify Setup**: Add these as build arguments in your Coolify project settings
+- **Note**: Vite environment variables are embedded at build time, not runtime
+
 ## Data Sources Priority
 1. **Database** (Supabase) - Primary data source
 2. **Google Places API** - Fallback for real-time data
