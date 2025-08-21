@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS bottle_collection.supermarkets (
     longitude DECIMAL(11, 8) NOT NULL,
     google_place_id TEXT,
     opening_hours JSONB,
-    status TEXT CHECK (status IN ('open', 'closed')) DEFAULT 'closed',
+    status TEXT CHECK (status IN ('open', 'closed', 'unknown')) DEFAULT 'unknown',
     last_updated TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

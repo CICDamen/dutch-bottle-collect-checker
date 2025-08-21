@@ -27,6 +27,7 @@ class DatabaseService {
    */
   async createSupermarket(supermarket: Omit<SupermarketData, 'id' | 'lastUpdated'>): Promise<SupermarketData> {
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarkets')
       .insert({
         chain: supermarket.chain,
@@ -69,6 +70,7 @@ class DatabaseService {
     if (updates.longitude) updateData.longitude = updates.longitude;
 
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarkets')
       .update(updateData)
       .eq('id', id)
@@ -95,6 +97,7 @@ class DatabaseService {
 
     // Fetch supermarkets with their incident data in a single query
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarkets')
       .select(`
         *,
@@ -163,6 +166,7 @@ class DatabaseService {
     }
 
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarkets')
       .select('*')
       .gte('latitude', bounds.south)
@@ -190,6 +194,7 @@ class DatabaseService {
     const searchTerm = `%${query.toLowerCase()}%`;
 
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarkets')
       .select('*')
       .or(`name.ilike.${searchTerm},chain.ilike.${searchTerm},city.ilike.${searchTerm},postal_code.ilike.${searchTerm}`);
@@ -216,6 +221,7 @@ class DatabaseService {
     }
 
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('sync_metadata')
       .select('*')
       .eq('id', 1)
@@ -267,6 +273,7 @@ class DatabaseService {
     incidentDescription?: string;
   }): Promise<string> {
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('user_inputs')
       .insert({
         supermarket_id: input.supermarketId,
@@ -303,6 +310,7 @@ class DatabaseService {
 
     // Clear existing data
     const { error: deleteError } = await supabase
+      .schema('bottle_collection')
       .from('supermarkets')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
@@ -329,6 +337,7 @@ class DatabaseService {
       }));
 
       const { data, error } = await supabase
+        .schema('bottle_collection')
         .from('supermarkets')
         .insert(insertData)
         .select('id');
@@ -342,6 +351,7 @@ class DatabaseService {
 
     // Update sync metadata
     await supabase
+      .schema('bottle_collection')
       .from('sync_metadata')
       .update({
         last_sync: new Date().toISOString(),
@@ -361,6 +371,7 @@ class DatabaseService {
    */
   async getUserInputsForSupermarket(supermarketId: string): Promise<any[]> {
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('user_inputs')
       .select('*')
       .eq('supermarket_id', supermarketId)
@@ -384,6 +395,7 @@ class DatabaseService {
    */
   async reportIncident(incident: IncidentReportForm): Promise<string> {
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarket_incidents')
       .insert({
         supermarket_id: incident.supermarket_id,
@@ -414,6 +426,7 @@ class DatabaseService {
     includeResolved: boolean = false
   ): Promise<SupermarketIncident[]> {
     let query = supabase
+      .schema('bottle_collection')
       .from('supermarket_incidents')
       .select('*')
       .eq('supermarket_id', supermarketId)
@@ -438,6 +451,7 @@ class DatabaseService {
    */
   async getIncidentSummaries(): Promise<SupermarketIncidentSummary[]> {
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarket_incident_summary')
       .select('*')
       .order('active_incidents', { ascending: false });
@@ -460,6 +474,7 @@ class DatabaseService {
     updates: Partial<Pick<SupermarketIncident, 'status' | 'priority' | 'admin_notes'>>
   ): Promise<SupermarketIncident> {
     const { data, error } = await supabase
+      .schema('bottle_collection')
       .from('supermarket_incidents')
       .update(updates)
       .eq('id', incidentId)
@@ -522,6 +537,7 @@ class DatabaseService {
     status?: SupermarketIncident['status']
   ): Promise<Array<SupermarketIncident & { supermarket_name: string; chain: string }>> {
     let query = supabase
+      .schema('bottle_collection')
       .from('supermarket_incidents')
       .select(`
         *,

@@ -8,7 +8,7 @@ export interface SupermarketData {
   latitude: number;
   longitude: number;
   googlePlaceId?: string;
-  status: 'open' | 'closed';
+  status: 'open' | 'closed' | 'unknown';
   lastUpdated: string;
   reportedBy?: string;
   openingHours?: {
