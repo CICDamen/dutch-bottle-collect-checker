@@ -14,10 +14,12 @@ COPY index.html vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.jso
 # Accept build args for environment variables
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_GOOGLE_PLACES_API_KEY
 
 # Set environment variables for build
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+ENV VITE_GOOGLE_PLACES_API_KEY=$VITE_GOOGLE_PLACES_API_KEY
 
 RUN bun run build
 
