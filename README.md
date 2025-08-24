@@ -142,7 +142,8 @@ docker run -p 8080:8080 -e VITE_SUPABASE_URL=your-url -e VITE_SUPABASE_ANON_KEY=
    ```bash
    VITE_SUPABASE_URL=https://your-project-id.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key-here
-   VITE_GOOGLE_PLACES_API_KEY=your-google-places-api-key
+   VITE_GOOGLE_PLACES_API_KEY=your-web-api-key-with-referrer-restrictions
+   GOOGLE_PLACES_SERVER_API_KEY=your-server-api-key-no-referrer-restrictions
    ```
 
 3. **Start the application**:
@@ -170,14 +171,33 @@ For production deployment, consider:
 
 ## Environment Variables
 
-This project uses a single Google Places API key for both client-side maps and server-side data synchronization:
+This project uses **two separate** Google Places API keys for optimal security:
 
-- **`VITE_GOOGLE_PLACES_API_KEY`**: Google Places API key used for:
-  - Frontend Google Maps integration (React component)  
-  - Backend data synchronization (Node.js sync script)
-  - The `VITE_` prefix is required by Vite to expose the variable to client-side code
+### Google Places API Keys
+- **`VITE_GOOGLE_PLACES_API_KEY`**: For web app Google Maps integration
+  - ✅ **Must have HTTP referrer restrictions** (e.g., `localhost:*`, `yourdomain.com/*`)
+  - Used by: Frontend React components
+  - The `VITE_` prefix exposes it to client-side code
 
-**Why VITE_ prefix?** Vite only exposes environment variables with the `VITE_` prefix to the browser for security. The same variable works for server-side Node.js scripts since `process.env` can access all environment variables.
+- **`GOOGLE_PLACES_SERVER_API_KEY`**: For server-side data synchronization  
+  - ✅ **No restrictions** OR **IP address restrictions only**
+  - ❌ **Cannot have HTTP referrer restrictions** (causes "API keys with referer restrictions cannot be used with this API" error)
+  - Used by: `scripts/sync-supermarkets.js`
+  - Fallback: Uses `VITE_GOOGLE_PLACES_API_KEY` if not set (not recommended for production)
+
+### Why Two Keys?
+Google's security model requires different restriction types:
+- **Web apps** need HTTP referrer restrictions for browser security
+- **Server APIs** cannot use referrer restrictions (they work server-to-server)
+
+### API Key Setup Guide
+1. **Create two API keys** in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. **Enable these APIs** for both keys:
+   - Places API
+   - Maps JavaScript API
+3. **Configure restrictions**:
+   - **Web key**: Add HTTP referrer restrictions
+   - **Server key**: Add IP restrictions OR leave unrestricted (monitor usage)
 
 ## Known Issues / TODOs
 

@@ -7,9 +7,10 @@
  * Usage: node scripts/sync-supermarkets.js
  * 
  * Environment variables required:
- * - VITE_GOOGLE_PLACES_API_KEY: Google Places API key
- * - SUPABASE_URL: Local Supabase URL (default: http://127.0.0.1:54321)
- * - SUPABASE_SERVICE_KEY: Supabase service role key (for local dev, use anon key)
+ * - GOOGLE_PLACES_SERVER_API_KEY: Google Places API key for server-side use (no restrictions)
+ *   Fallback: VITE_GOOGLE_PLACES_API_KEY (if server key not available)
+ * - VITE_SUPABASE_URL: Supabase URL (default: http://127.0.0.1:54321 for local)
+ * - SUPABASE_SERVICE_ROLE_KEY: Supabase service role key
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -19,7 +20,7 @@ import { config } from 'dotenv';
 // Load environment variables
 config();
 
-const GOOGLE_PLACES_API_KEY = process.env.VITE_GOOGLE_PLACES_API_KEY;
+const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_SERVER_API_KEY || process.env.VITE_GOOGLE_PLACES_API_KEY;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -61,12 +62,8 @@ const NETHERLANDS_BOUNDS = {
   west: 3.2
 };
 
-// Initialize Supabase client with bottle_collection schema
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  db: {
-    schema: 'bottle_collection'
-  }
-});
+// Initialize Supabase client (using public schema)
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 /**
  * Check if coordinates are within Netherlands boundaries
@@ -308,7 +305,7 @@ async function convertToSupermarketData(place) {
  */
 async function searchPlacesByText(query) {
   if (!GOOGLE_PLACES_API_KEY) {
-    throw new Error('Google Places API key not configured. Set VITE_GOOGLE_PLACES_API_KEY environment variable.');
+    throw new Error('Google Places API key not configured. Set GOOGLE_PLACES_SERVER_API_KEY or VITE_GOOGLE_PLACES_API_KEY environment variable.');
   }
 
   let allResults = [];
@@ -497,6 +494,50 @@ async function upsertSupermarkets(supermarkets) {
 }
 
 /**
+ * Debug function to check current database user and roles
+ */
+async function debugDatabaseUser() {
+  try {
+    console.log('🔍 Checking database user and roles...');
+    
+    // Try the debug function first
+    const { data: debugData, error: debugError } = await supabase.rpc('debug_user_info');
+    
+    if (debugError) {
+      console.log('Debug function not available, checking connection info...');
+      console.log('Using service role key:', !!SUPABASE_SERVICE_KEY);
+      console.log('Service role key type:', SUPABASE_SERVICE_KEY ? 'JWT token' : 'not set');
+      
+      // Check if we're using anon key as service key
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+      const serviceKey = SUPABASE_SERVICE_KEY;
+      
+      if (anonKey === serviceKey) {
+        console.log('✅ Using anon key as service role key (self-hosted setup)');
+      } else {
+        console.log('❌ Different keys - anon vs service');
+      }
+    } else {
+      console.log('Database connection info:', debugData);
+    }
+    
+    // Test a simple query to see what permissions we have
+    const { data: testData, error: testError } = await supabase
+      .from('supermarkets')
+      .select('count', { count: 'exact', head: true });
+      
+    if (testError) {
+      console.log('❌ Basic query failed:', testError.message);
+    } else {
+      console.log('✅ Basic query successful');
+    }
+    
+  } catch (error) {
+    console.error('Failed to check database user:', error.message);
+  }
+}
+
+/**
  * Main sync function
  */
 async function syncSupermarkets() {
@@ -505,8 +546,11 @@ async function syncSupermarkets() {
     console.log(`📡 Using Supabase: ${SUPABASE_URL}`);
     console.log(`🔑 Google API Key configured: ${!!GOOGLE_PLACES_API_KEY}`);
     
+    // Add debug call here
+    await debugDatabaseUser();
+    
     if (!GOOGLE_PLACES_API_KEY) {
-      throw new Error('Google Places API key is required. Set VITE_GOOGLE_PLACES_API_KEY in your .env file.');
+      throw new Error('Google Places API key is required. Set GOOGLE_PLACES_SERVER_API_KEY (preferred) or VITE_GOOGLE_PLACES_API_KEY in your .env file.');
     }
 
     // Test Supabase connection
@@ -549,8 +593,8 @@ async function syncSupermarkets() {
           
           console.log(`✅ ${city} - ${chain}: ${converted.length} locations found`);
           
-          // Rate limiting: wait 500ms between requests (more conservative due to pagination)
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Rate limiting: wait 1000ms between requests to avoid quota issues
+          await new Promise(resolve => setTimeout(resolve, 1000));
           
         } catch (error) {
           console.error(`❌ Failed to fetch ${city} - ${chain}:`, error.message);

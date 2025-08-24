@@ -7,14 +7,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  db: {
-    schema: 'bottle_collection'
-  }
-})
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export type Database = {
-  bottle_collection: {
+  public: {
     Tables: {
       supermarkets: {
         Row: {
